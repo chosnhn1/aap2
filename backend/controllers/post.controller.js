@@ -117,3 +117,17 @@ export const commentOnPost = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+export const getAllPosts = async (req, res) => {
+  try {
+    const posts = await Post.find().sort({ createdAt: -1});
+    if (posts.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    res.status(200).json(posts);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+  }
+};
