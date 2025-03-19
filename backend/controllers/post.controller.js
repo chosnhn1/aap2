@@ -1,3 +1,4 @@
+import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 
@@ -35,7 +36,38 @@ export const createPost = async (req, res) => {
 
 export const likeUnlikePost = async (req, res) => {
   try {
+    // post check, auth check, like check and toggle
+    // auth pass (route is protected)
+    const userId = req.user._id;
+    const {id: postId} = req.params;
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({error: "Post not found."});
     
+
+    const userLikedPost = post.likes.includes(userId);
+    if (userLikedPost) {
+      // perform unlike
+      // await Post.findByIdAndUpdate(postId, {$pull: {likes: userId}});
+      await Post.updateOne({_id: postId}, {$pull: {likes: userId}});
+      return res.status(200).json({ message: "Post unliked."});
+      
+    } else {
+      // perform like
+      // await Post.updateOne({_id: postId}, {$push: {likes: userId}});
+      post.likes.push(userId);
+      await post.save();
+      
+      // perform note
+      const newNotification = new Notification({
+        type: "like",
+        from: userId,
+        to: post.user
+      });
+      await newNotification.save();
+
+      return res.status(200).json({ message: "Post liked."});
+    }
+
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: error.message });
