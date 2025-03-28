@@ -43,18 +43,20 @@ export const likeUnlikePost = async (req, res) => {
     const post = await Post.findById(postId);
     if (!post) return res.status(404).json({error: "Post not found."});
     
-
+    // like check
     const userLikedPost = post.likes.includes(userId);
     if (userLikedPost) {
       // perform unlike
       // await Post.findByIdAndUpdate(postId, {$pull: {likes: userId}});
       await Post.updateOne({_id: postId}, {$pull: {likes: userId}});
+      await User.updateOne({_id: userId}, {$pull: {likedPosts: postId}});
       return res.status(200).json({ message: "Post unliked."});
       
     } else {
       // perform like
       // await Post.updateOne({_id: postId}, {$push: {likes: userId}});
       post.likes.push(userId);
+      await User.updateOne({_id: userId}, {$push: {likedPosts: postId}});
       await post.save();
       
       // perform note
@@ -120,7 +122,15 @@ export const commentOnPost = async (req, res) => {
 
 export const getAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find().sort({ createdAt: -1});
+    // populate user in posts, except pw
+    const posts = await Post.find().sort({ createdAt: -1}).populate({
+      path: "user",
+      select: "-password"
+    }).populate({
+      path: "comments.user",
+      select: "-password"
+    });
+
     if (posts.length === 0) {
       return res.status(200).json([]);
     }
@@ -131,3 +141,49 @@ export const getAllPosts = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+export const getLikedPosts = async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(400).json({ error: "Bad request." });
+    const likedPosts = await Post.find({_id: {$in: user.likedPosts}})
+    .populate({
+      path: "user",
+      select: "-password"
+    }).populate({
+      path: "comments.user",
+      select: "-password"
+    });
+    return res.status(200).json(likedPosts)
+    
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+export const getFollowingsPosts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    if (!user) return res.status(400).json({ error: "User not found." });
+    
+    const followings = user.followings;
+    const feedPosts = await Post.find({user: {$in: followings}})
+    .sort({ createdAt: -1})
+    .populate({
+      path: "user",
+      select: "-password"
+    }).populate({
+      path: "comments.user",
+      select: "-password"
+    });
+    res.status(200).json(feedPosts);
+    
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+    
+  }
+}
