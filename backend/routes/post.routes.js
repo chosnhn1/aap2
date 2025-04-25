@@ -5,6 +5,7 @@ import { createPost, likeUnlikePost, commentOnPost, deletePost, getAllPosts, get
 const router = express.Router();
 
 router.get("/all", protectRoute, getAllPosts);
+// router.get("/all", protectRoute, getAllPosts);
 router.get("/followings", protectRoute, getFollowingsPosts);
 router.get("/likes/:id", protectRoute, getLikedPosts);
 router.post("/create", protectRoute, createPost);
